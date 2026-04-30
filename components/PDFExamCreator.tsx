@@ -198,10 +198,9 @@ function DriveUploadBlock({
   );
 }
 
-
 // ─── COMPONENT CHÍNH ─────────────────────────────────────────────────────────
+
 const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName, onSave, onCancel }) => {
-  const answerFileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<1|2|3|4>(1);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -284,31 +283,6 @@ const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName,
     }
   };
 
-  const handleImportAnswers = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    try {
-      const content = event.target?.result as string;
-      const parsed = parseAnswerFile(content);
-      
-      // Sử dụng hàm callback để đảm bảo state cũ không bị mất
-      setMcAnswers(prev => ({ ...prev, ...parsed.mc }));
-      setTfAnswers(prev => ({ ...prev, ...parsed.tf }));
-      setSaAnswers(prev => ({ ...prev, ...parsed.sa }));
-    } catch (err) {
-      console.error("Lỗi đọc file:", err);
-      alert("Định dạng file không hợp lệ!");
-    } finally {
-      // Quan trọng: Reset value để có thể chọn lại chính file đó nếu sửa nội dung
-      if (answerFileInputRef.current) answerFileInputRef.current.value = '';
-    }
-  };
-  reader.readAsText(file);
-};
-
   const step1Valid = !!(pdfBase64 && config.title.trim() && config.timeLimit > 0
     && (config.mcCount + config.tfCount + config.saCount) > 0);
 
@@ -385,39 +359,7 @@ const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName,
     </div>
   );
 
-  function parseAnswerFile(content: string) {
-  const mc: MCAnswers = {};
-  const tf: TFAnswers = {};
-  const sa: SAAnswers = {};
-  const lines = content.split('\n');
-
-  lines.forEach(line => {
-    // Tách chuỗi theo dấu | và xóa khoảng trắng dư thừa
-    const parts = line.split('|').map(p => p.trim());
-    if (parts.length < 3) return;
-
-    const [part, qIndexStr, ans] = parts;
-    const qIndex = parseInt(qIndexStr);
-
-    if (part === 'P1') {
-      mc[qIndex] = ans.toUpperCase();
-    } else if (part === 'P2') {
-      // Chuyển DSDD -> [Đ, S, Đ, Đ]
-      const tfArray = ans.split('').map(char => 
-        (char.toUpperCase() === 'D' || char === 'Đ') ? 'Đ' : 'S'
-      );
-      // Áp dụng offset 200 vì tfRange của bạn bắt đầu từ 201
-      tf[200 + qIndex] = tfArray;
-    } else if (part === 'P3') {
-      // Áp dụng offset 300 vì saRange bắt đầu từ 301
-      sa[300 + qIndex] = ans;
-    }
-  });
-
-  return { mc, tf, sa };
-}
-  
-    // ─── BƯỚC 3 ─────────────────────────────────────────────────
+  // ─── BƯỚC 3 ─────────────────────────────────────────────────
   if (step === 3) {
     const mcNums = mcRange(config.mcCount), tfNums = tfRange(config.tfCount), saNums = saRange(config.saCount);
     const answeredMC = Object.values(mcAnswers).filter(Boolean).length;
@@ -425,27 +367,9 @@ const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName,
     const answeredTF = Object.values(tfAnswers).filter(v => v.filter(Boolean).length === 4).length;
     return (
       <div className="max-w-3xl mx-auto p-6 bg-white rounded-2xl shadow-lg">
-      <StepIndicator step={step} />
-      
-      <div className="flex justify-between items-start mb-5">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800 mb-1">🔑 Nhập đáp án</h2>
-        </div>
-        
-        {/* Nút Import File */}
-        <div>
-          <input 
-            type="file" accept=".txt" ref={answerFileInputRef} 
-            className="hidden" onChange={handleImportAnswers} 
-          />
-          <button 
-            onClick={() => answerFileInputRef.current?.click()}
-            className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold hover:bg-amber-100 transition"
-          >
-            📥 Nhập đáp án từ File
-          </button>
-        </div>
-      </div>
+        <StepIndicator step={step} />
+        <h2 className="text-xl font-bold text-gray-800 mb-1">🔑 Nhập đáp án</h2>
+        <p className="text-sm text-gray-500 mb-5">Nhập đáp án đúng cho từng câu</p>
 
         {mcNums.length > 0 && (
           <div className="mb-6">
